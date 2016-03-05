@@ -4,6 +4,8 @@
 
 extern libnet_t* l;
 
+#define SOURCE_PORT 666
+
 void sendArbitraryTCP(u_int32_t target, int targetPort, int times, u_char flags, int sequenceNum, int ackNum){
         int bytes_written;
         int size;
@@ -13,7 +15,7 @@ void sendArbitraryTCP(u_int32_t target, int targetPort, int times, u_char flags,
 	
         /*Prepare the Custom packet*/
 
-	tag = libnet_build_tcp(666,		// Source TCP port 
+	tag = libnet_build_tcp(SOURCE_PORT,	// Source TCP port 
                 targetPort,    			// Destination TCP port 
                 htonl(sequenceNum),		// Sequence number 
                 ntohl(ackNum),			// Acknowledgement number
