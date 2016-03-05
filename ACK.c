@@ -10,6 +10,9 @@ extern bpf_u_int32 net;
 extern int host_is_up;
 extern char ownIPc[];
 
+#define FILTER_EXPRESSION_ACK "dst host %s and src host %s and tcp and dst port 65000"
+#define FILTER_LENGHT 51+(2*16)
+#define SOURCE_PORT 65000
 
 int receiveACK(const struct pcap_pkthdr *header, const u_char *packet, struct timeval* before){
         const struct libnet_tcp_hdr* tcp;
@@ -44,8 +47,8 @@ void sendACK(u_int32_t target, int targetPort, int times){
         printf("------------------Starting ACK PING------------------\n\n");
 
         /*Prepare pcap to sniff our packets*/
-        filter_exp = (char*)calloc(51+(2*16), sizeof(char));
-        sprintf(filter_exp, "dst host %s and src host %s and tcp and dst port 65000", ownIPc, targetc);
+        filter_exp = (char*)calloc(FILTER_LENGHT, sizeof(char));
+        sprintf(filter_exp, FILTER_EXPRESSION_ACK, ownIPc, targetc);
         if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
                 printf("Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
                 exit(-1);
@@ -55,9 +58,9 @@ void sendACK(u_int32_t target, int targetPort, int times){
                 exit(-1);
         }
 
-        /*Prepare the SYN packet*/
+        /*Prepare the ACK packet*/
 
-        tag = libnet_build_tcp(65000,           // Source TCP port 
+        tag = libnet_build_tcp(SOURCE_PORT,     // Source TCP port 
                 targetPort,                     // Destination TCP port 
                 htonl(0),                       // Sequence number 
                 ntohl(0),                       // Acknowledgement number (SYN's seq # + 1)

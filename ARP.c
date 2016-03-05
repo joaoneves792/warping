@@ -12,6 +12,10 @@ extern bpf_u_int32 net;
 extern int host_is_up;
 extern char* dev;
 
+#define FILTER_EXPRESSION_ARP "ether dst host %s and arp" 
+#define FILTER_LENGTH 33+(2*16)
+#define MAC_ADDR_CHAR_LENGTH 18
+
 int receiveARP(const struct pcap_pkthdr *header, const u_char *packet, u_int32_t target, struct timeval* before){
 	const struct arp_reply_hdr* arp;
 	long rtt = ((header->ts.tv_sec - before->tv_sec)*1000L+header->ts.tv_usec/1000) - before->tv_usec/1000;
@@ -36,7 +40,7 @@ int receiveARP(const struct pcap_pkthdr *header, const u_char *packet, u_int32_t
 
 void sendARP(u_int32_t target, int times){
 	struct libnet_ether_addr *src_mac_addr;
-	char src_mac_char[18];
+	char src_mac_char[MAC_ADDR_CHAR_LENGTH];
 	u_int8_t mac_zero_addr[6] = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
 	u_int8_t mac_broadcast_addr[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 	struct bpf_program fp;          /* The compiled filter expression */
@@ -67,9 +71,9 @@ void sendARP(u_int32_t target, int times){
 		exit(-1);
 	}
 	/*Prepare pcap to sniff our packets*/
-        filter_exp = (char*)calloc(33+(2*16), sizeof(char));
+        filter_exp = (char*)calloc(FILTER_LENGTH, sizeof(char));
 	sprintf(src_mac_char, "%02x:%02x:%02x:%02x:%02x:%02x", src_mac_addr->ether_addr_octet[0], src_mac_addr->ether_addr_octet[1], src_mac_addr->ether_addr_octet[2], src_mac_addr->ether_addr_octet[3], src_mac_addr->ether_addr_octet[4], src_mac_addr->ether_addr_octet[5]);
-        sprintf(filter_exp, "ether dst host %s and arp", src_mac_char);
+        sprintf(filter_exp, FILTER_EXPRESSION_ARP, src_mac_char);
         if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
                 printf("Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
                 exit(-1);

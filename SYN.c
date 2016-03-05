@@ -12,11 +12,15 @@ extern char ownIPc[];
 u_int32_t targetIP;
 int port;
 
+#define SOURCE_PORT 65000
+#define FILTER_EXPRESSION_SYN "dst host %s and src host %s and tcp and dst port 65000"
+#define FILTER_LENGTH 51+(2*16)
+
 void closeSession(){
         libnet_ptag_t tag = LIBNET_PTAG_INITIALIZER;
 	int bytes_written;
 
-	tag = libnet_build_tcp(65000,		// Source TCP port 
+	tag = libnet_build_tcp(SOURCE_PORT,     // Source TCP port 
                 port,    			// Destination TCP port 
                 htonl(1),			// Sequence number 
                 ntohl(1),			// Acknowledgement number (SYN's seq # + 1)
@@ -48,7 +52,7 @@ void closeSession(){
                         exit(-1);
         }
 
-	tag = libnet_build_tcp(65000,		// Source TCP port 
+	tag = libnet_build_tcp(SOURCE_PORT,	// Source TCP port 
                 port,    			// Destination TCP port 
                 htonl(1),			// Sequence number 
                 ntohl(1),			// Acknowledgement number (SYN's seq # + 1)
@@ -116,8 +120,8 @@ void sendSYN(u_int32_t target, int targetPort, int times){
 	port = targetPort;
 
         /*Prepare pcap to sniff our packets*/
-        filter_exp = (char*)calloc(51+(2*16), sizeof(char));
-        sprintf(filter_exp, "dst host %s and src host %s and tcp and dst port 65000", ownIPc, targetc);
+        filter_exp = (char*)calloc(FILTER_LENGTH, sizeof(char));
+        sprintf(filter_exp, FILTER_EXPRESSION_SYN, ownIPc, targetc);
         if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
                 printf("Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
                 exit(-1);
@@ -129,7 +133,7 @@ void sendSYN(u_int32_t target, int targetPort, int times){
 
         /*Prepare the SYN packet*/
 
-	tag = libnet_build_tcp(65000,		// Source TCP port 
+	tag = libnet_build_tcp(SOURCE_PORT,	// Source TCP port 
                 targetPort,    			// Destination TCP port 
                 htonl(0),			// Sequence number 
                 ntohl(0),			// Acknowledgement number (SYN's seq # + 1)

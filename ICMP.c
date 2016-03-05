@@ -8,6 +8,9 @@ extern char* targetc;
 extern bpf_u_int32 net;
 extern int host_is_up;
 
+#define IP_HEADER_LENGHT 20
+#define FILTER_EXPRESSION_ICMP "dst host %s and src host %s and icmp"
+#define FILTER_LENGTH 33+(2*16)
 
 int receiveICMP(const struct pcap_pkthdr *header, const u_char *packet, u_int16_t id, struct timeval* before){
 	const struct libnet_ipv4_hdr* iphdr;
@@ -18,7 +21,7 @@ int receiveICMP(const struct pcap_pkthdr *header, const u_char *packet, u_int16_
 
 	iphdr = (struct libnet_ipv4_hdr*)(packet+LIBNET_ETH_H);
 	size_ip = iphdr->ip_hl * 4;
-        if (size_ip < 20) {
+        if (size_ip < IP_HEADER_LENGHT) {
                 printf("   * Invalid IP header length: %d bytes\n", size_ip);
                 return 1;
         }
@@ -52,8 +55,8 @@ void sendICMP(u_int32_t target, int times){
 	seq = 1;
 
 	/*Prepare pcap to sniff our packets*/
-	filter_exp = (char*)calloc(33+(2*16), sizeof(char));
-	sprintf(filter_exp, "dst host %s and src host %s and icmp", ownIPc, targetc);
+	filter_exp = (char*)calloc(FILTER_LENGTH, sizeof(char));
+	sprintf(filter_exp, FILTER_EXPRESSION_ICMP, ownIPc, targetc);
         if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
                 printf("Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
                 exit(-1);
