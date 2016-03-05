@@ -21,6 +21,12 @@
 #define DEFAULT_TARGET_PORT 80
 #define TIMEOUT_MS 4000
 
+#define USED_DEFINED 0
+#define ICMP 1
+#define ARP 2
+#define SYN 3
+#define ACK 4
+
 libnet_t* l; /*libnet context*/
 char libneterrbuf[LIBNET_ERRBUF_SIZE];
 char pcaperrbuf[PCAP_ERRBUF_SIZE];
@@ -83,17 +89,17 @@ int main(int argc, char** argv){
 		else if(!strcmp(argv[i], "-p"))
 			targetPort = atoi(argv[++i]);
 		else if(!strcmp(argv[i], "-icmp")){
-			preferredPing[0] = 1;
-			preferredPing[1] = 1;
+			preferredPing[USED_DEFINED] = 1;
+			preferredPing[ICMP] = 1;
 		}else if(!strcmp(argv[i], "-arp")){
-			preferredPing[0] = 1;
-			preferredPing[2] = 1;
+			preferredPing[USED_DEFINED] = 1;
+			preferredPing[ARP] = 1;
 		}else if(!strcmp(argv[i], "-syn")){
-			preferredPing[0] = 1;
-			preferredPing[3] = 1;
+			preferredPing[USED_DEFINED] = 1;
+			preferredPing[SYN] = 1;
 		}else if(!strcmp(argv[i], "-ack")){
-			preferredPing[0] = 1;
-			preferredPing[4] = 1;
+			preferredPing[USED_DEFINED] = 1;
+			preferredPing[ACK] = 1;
 		}else if(!strcmp(argv[i], "-custom")) /*The next options are exclusive to sending custom tcp packets*/
 			sendCustomPackets = 1;
 		else if(!strcmp(argv[i], "-s"))
@@ -183,10 +189,10 @@ int main(int argc, char** argv){
         }
 
 	//If the user requested a specific scan then do it
-	if(preferredPing[0]){
-		if(preferredPing[1])
+	if(preferredPing[USED_DEFINED]){
+		if(preferredPing[ICMP])
 			sendICMP(targetIP, times);
-		if(preferredPing[2]){
+		if(preferredPing[ARP]){
 			if(!sameSubnet)
 				printf("\nIn order to perform an ARP ping you must be on the same subnet as your target!!\n\n");
 			else if(!strcmp(dev, "lo"))
@@ -194,9 +200,9 @@ int main(int argc, char** argv){
 			else
 				sendARP(targetIP, times);
 		}
-		if(preferredPing[3])
+		if(preferredPing[SYN])
 			sendSYN(targetIP, targetPort, times);
-		if(preferredPing[4])
+		if(preferredPing[ACK])
 			sendACK(targetIP, targetPort, times);
 	}else{//If the user didnt specify a scan type then do all of them until one gets a positive answer		
 		sendICMP(targetIP, times);
