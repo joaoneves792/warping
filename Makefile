@@ -6,5 +6,5 @@ all: $(OBJS)
 	gcc $(CFLAGS) -o warping $(OBJS) $(LIBS) 
 
 clean: 	
-	rm warping
-	rm *.o
+	-rm warping
+	-rm *.o

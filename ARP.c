@@ -38,7 +38,7 @@ int receiveARP(const struct pcap_pkthdr *header, const u_char *packet, u_int32_t
 }
 
 
-void sendARP(u_int32_t target, int times){
+void sendARP(u_int32_t target, int times, unsigned timeout){
 	struct libnet_ether_addr *src_mac_addr;
 	char src_mac_char[MAC_ADDR_CHAR_LENGTH];
 	u_int8_t mac_zero_addr[6] = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
@@ -114,8 +114,10 @@ void sendARP(u_int32_t target, int times){
 
                 /*Capture the reply to the packet we just sent*/
                 do{
-                        success = pcap_next_ex(handle, &pkthdr, &packet);
-                        if(success == 0){
+                        alarm(timeout);
+			success = pcap_next_ex(handle, &pkthdr, &packet);
+			alarm(0);
+                        if(success == 0 || success == -2){
                                 printf("Request timed out\n");
                                 break;
                         }else if(success < 0){

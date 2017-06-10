@@ -14,7 +14,7 @@ typedef struct arp_reply_hdr {
 }arphdr_t; 
 
 int receiveARP(const struct pcap_pkthdr *header, const u_char *packet, u_int32_t target, struct timeval* before);
-void sendARP(u_int32_t target, int times);
+void sendARP(u_int32_t target, int times, unsigned timeout);
 
 
 #endif

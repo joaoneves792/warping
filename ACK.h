@@ -3,6 +3,6 @@
 
 
 int receiveACK(const struct pcap_pkthdr *header, const u_char *packet, struct timeval* before);
-void sendACK(u_int32_t target, int targetPort, int times);
+void sendACK(u_int32_t target, int targetPort, int times, unsigned timeout);
 
 #endif

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include <signal.h>
 
 #include <net/if.h>
 #include <netinet/in.h>
@@ -38,6 +39,10 @@ bpf_u_int32 net;
 int host_is_up = 0;
 char* dev = NULL;
 
+void timeout_handler(int sig){
+	pcap_breakloop(handle);	
+}
+
 int main(int argc, char** argv){
         bpf_u_int32 mask;               /* The netmask of our sniffing device */
 
@@ -45,7 +50,7 @@ int main(int argc, char** argv){
 	int sameSubnet = 0;
 	int i;
 	int times = DEFAULT_REPEAT_COUNT;
-	int timeout = TIMEOUT_MS;
+	int timeout = TIMEOUT_MS/1000;
 	int targetPort = DEFAULT_TARGET_PORT;
 	char preferredPing[5]; //[0] there is a preferred scan, [1] do ICMP, [2] do ARP(if possible), [3] do SYN, [4] do ACK
 	/*Variables for sending arbitrary TCP packets, and their default values*/
@@ -57,7 +62,7 @@ int main(int argc, char** argv){
 	/*--------------*/
 
 	if(argc < 2){
-		printf("Usage: sudo warping <target ip> [options]\n\nWarping v1.0 by warpenguin 20/11/2013\n\nOPTIONS:\n\n	-i <interface>\n	Specify an interface to use when sending the packets. If none is suplied then it uses the default one.\n\n	-n <count>\n	Stop after sending count number of packets. If count is -1 then keep sending until the user kills the program.\n\n	-w <timeout>\n	Time (in ms) to wait for a response from the target\n\n	-p <port>\n	Number of the port on the target to send SYN or ACK packets. Might be usefull to check if that port is open or to evade a firewall.\n\n	-icmp\n	Send ICMP ECHO requests and wait for the replies(normal ping).\n\n	-arp\n	Do an ARP ping. Basicly it sends an ARP Request (Who is) and waits for the reply. Only works if you are on the same subnet as the target, but if you are then the lack of a response can only mean that the host is really down.\n\n	-syn\n	Send a SYN packet to a port on the target machine (default is 80, but you can choose another one with -p). The target can either reply with a SYN/ACK packet meaning that the host is up and that port is open, or with a RST packet, meaning that the host is up but that port is closed, if it times out it might mean that the host is down or that there is a firewall in place.\n\n	-ack\n	Send an ACK packet to a port on the target machine (default is 80, but you can choose another one with -p). The host can either respond with a RST packet, meaning that it is up, or if it times out the host might be down or it is firewalled. This is the most stealth kind of ping since it is relatively undetectable.\n\n");
+		printf("Usage: sudo warping <target ip> [options]\n\nWarping v1.0 by warpenguin 20/11/2013\n\nOPTIONS:\n\n	-i <interface>\n	Specify an interface to use when sending the packets. If none is suplied then it uses the default one.\n\n	-n <count>\n	Stop after sending count number of packets. If count is -1 then keep sending until the user kills the program.\n\n	-w <timeout>\n	Time (in secons) to wait for a response from the target\n\n	-p <port>\n	Number of the port on the target to send SYN or ACK packets. Might be usefull to check if that port is open or to evade a firewall.\n\n	-icmp\n	Send ICMP ECHO requests and wait for the replies(normal ping).\n\n	-arp\n	Do an ARP ping. Basicly it sends an ARP Request (Who is) and waits for the reply. Only works if you are on the same subnet as the target, but if you are then the lack of a response can only mean that the host is really down.\n\n	-syn\n	Send a SYN packet to a port on the target machine (default is 80, but you can choose another one with -p). The target can either reply with a SYN/ACK packet meaning that the host is up and that port is open, or with a RST packet, meaning that the host is up but that port is closed, if it times out it might mean that the host is down or that there is a firewall in place.\n\n	-ack\n	Send an ACK packet to a port on the target machine (default is 80, but you can choose another one with -p). The host can either respond with a RST packet, meaning that it is up, or if it times out the host might be down or it is firewalled. This is the most stealth kind of ping since it is relatively undetectable.\n\n");
 		return 0;
 	}
 
@@ -182,36 +187,40 @@ int main(int argc, char** argv){
 		printf("You are not on the same subnet as %s\n", targetc);
 
 
+	/*Setting the timeout here doesnt work on all platforms*/
         handle = pcap_open_live(dev, BUFSIZ, 0, timeout, pcaperrbuf);
         if (handle == NULL) {
                 printf("Couldn't open device %s: %s\n", dev, pcaperrbuf);
                 return -1;
         }
 
+	/*Finally set up a signal handler for the timeouts*/
+	signal(SIGALRM, timeout_handler);
+
 	//If the user requested a specific scan then do it
 	if(preferredPing[USED_DEFINED]){
 		if(preferredPing[ICMP])
-			sendICMP(targetIP, times);
+			sendICMP(targetIP, times, timeout);
 		if(preferredPing[ARP]){
 			if(!sameSubnet)
 				printf("\nIn order to perform an ARP ping you must be on the same subnet as your target!!\n\n");
 			else if(!strcmp(dev, "lo"))
 				printf("\nYou cant do an ARP ping using the loopback interface!!\n\n");
 			else
-				sendARP(targetIP, times);
+				sendARP(targetIP, times, timeout);
 		}
 		if(preferredPing[SYN])
-			sendSYN(targetIP, targetPort, times);
+			sendSYN(targetIP, targetPort, times, timeout);
 		if(preferredPing[ACK])
-			sendACK(targetIP, targetPort, times);
+			sendACK(targetIP, targetPort, times, timeout);
 	}else{//If the user didnt specify a scan type then do all of them until one gets a positive answer		
-		sendICMP(targetIP, times);
+		sendICMP(targetIP, times, timeout);
 		if(!host_is_up && sameSubnet && strcmp(dev, "lo"))
-			sendARP(targetIP, times);
+			sendARP(targetIP, times, timeout);
 		if(!host_is_up)
-			sendSYN(targetIP, targetPort, times);
+			sendSYN(targetIP, targetPort, times, timeout);
 		if(!host_is_up)
-			sendACK(targetIP, targetPort, times);
+			sendACK(targetIP, targetPort, times, timeout);
 	}
         pcap_close(handle);
         libnet_destroy(l);

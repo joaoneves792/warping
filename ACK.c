@@ -33,7 +33,7 @@ int receiveACK(const struct pcap_pkthdr *header, const u_char *packet, struct ti
 
 }
 
-void sendACK(u_int32_t target, int targetPort, int times){
+void sendACK(u_int32_t target, int targetPort, int times, unsigned timeout){
      int bytes_written;
         int size;
         struct bpf_program fp;          /* The compiled filter expression */
@@ -103,8 +103,10 @@ void sendACK(u_int32_t target, int targetPort, int times){
 
                 /*Capture the reply to the packet we just sent*/
                 do{
-                        success = pcap_next_ex(handle, &pkthdr, &packet);
-                        if(success == 0){
+                        alarm(timeout);
+			success = pcap_next_ex(handle, &pkthdr, &packet);
+			alarm(0);
+                        if(success == 0 || success == -2){
                                 printf("Request timed out(there might be a firewall)\n");
                                 break;
                         }else if(success < 0){

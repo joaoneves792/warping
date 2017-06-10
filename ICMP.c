@@ -36,7 +36,7 @@ int receiveICMP(const struct pcap_pkthdr *header, const u_char *packet, u_int16_
 }
 
 
-void sendICMP(u_int32_t target, int times){
+void sendICMP(u_int32_t target, int times, unsigned timeout){
 	u_int16_t id, seq;
 	int bytes_written;
 	int size;
@@ -98,8 +98,10 @@ void sendICMP(u_int32_t target, int times){
 		
 		/*Capture the reply to the packet we just sent*/
 		do{
+			alarm(timeout);
 			success = pcap_next_ex(handle, &pkthdr, &packet);
-			if(success == 0){
+			alarm(0);
+			if(success == 0 || success == -2){
 				printf("Request timed out\n");
 				break;
 			}else if(success < 0){

@@ -103,7 +103,7 @@ int receiveSYN(const struct pcap_pkthdr *header, const u_char *packet, struct ti
 
 }
 
-void sendSYN(u_int32_t target, int targetPort, int times){
+void sendSYN(u_int32_t target, int targetPort, int times, unsigned timeout){
         int bytes_written;
         int size;
         struct bpf_program fp;          /* The compiled filter expression */
@@ -176,8 +176,10 @@ void sendSYN(u_int32_t target, int targetPort, int times){
 
                 /*Capture the reply to the packet we just sent*/
                 do{
+			alarm(timeout);
                         success = pcap_next_ex(handle, &pkthdr, &packet);
-                        if(success == 0){
+			alarm(0);
+                        if(success == 0 || success == -2){
                                 printf("Request timed out (There might be a firewall!)\n");
                                 break;
                         }else if(success < 0){
